@@ -1,3 +1,4 @@
+
 name: Build Elyzareth Lyric Player Debug APK
 
 on:
@@ -15,52 +16,48 @@ jobs:
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '21'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platform-tools
+            platforms;android-36
+            build-tools;36.0.0
+          accept-android-sdk-licenses: true
 
-      - name: Accept Android SDK Licenses & Install Platform 36
-        run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-36" "build-tools;36.0.0" || true
-
-      - name: Set up Gradle
+      - name: Set up Gradle 9.3.1
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
 
-      - name: Prepare Keystore, Environment & Wrapper
+      - name: Prepare project environment
         run: |
-          # Restore debug.keystore required by signingConfigs.debugConfig
-          if [ -f debug.keystore.base64 ] && [ ! -f debug.keystore ]; then
-            echo "Restoring debug.keystore from base64..."
-            base64 -d debug.keystore.base64 > debug.keystore
-          fi
-
-          # Ensure .env exists for the secrets gradle plugin
-          if [ -f .env.example ] && [ ! -f .env ]; then
-            echo "Creating .env from .env.example..."
-            cp .env.example .env
-          fi
-
-          # Ensure gradlew executable bit is set
           if [ -f ./gradlew ]; then
             chmod +x ./gradlew
+          fi
+
+          if [ -f .env.example ] && [ ! -f .env ]; then
+            cp .env.example .env
           fi
 
       - name: Build Debug APK
         run: |
           if [ -f ./gradlew ]; then
-            ./gradlew assembleDebug --stacktrace
+            ./gradlew :app:assembleDebug --stacktrace
           else
             gradle :app:assembleDebug --stacktrace
           fi
 
-      - name: Upload Debug APK Artifact
+      - name: Verify APK exists
+        run: |
+          test -f app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: Elyzareth-Lyric-Player-debug.apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: Elyzareth-Lyric-Player-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error

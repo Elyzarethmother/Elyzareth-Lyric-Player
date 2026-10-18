@@ -30,19 +30,40 @@ jobs:
 
       - name: Prepare Keystore, Environment & Wrapper
         run: |
-          # Restore debug.keystore required by signingConfigs.debugConfig
+          # 1. Restore or generate debug.keystore required by signingConfigs.debugConfig
           if [ -f debug.keystore.base64 ] && [ ! -f debug.keystore ]; then
             echo "Restoring debug.keystore from base64..."
             base64 -d debug.keystore.base64 > debug.keystore
           fi
 
-          # Ensure .env exists for the secrets gradle plugin
-          if [ -f .env.example ] && [ ! -f .env ]; then
-            echo "Creating .env from .env.example..."
-            cp .env.example .env
+          if [ ! -f debug.keystore ]; then
+            echo "Generating standard Android debug.keystore using keytool..."
+            keytool -genkey -v \
+              -keystore debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
           fi
 
-          # Ensure gradlew executable bit is set
+          # Confirm keystore exists
+          ls -la debug.keystore
+
+          # 2. Ensure .env exists for the secrets gradle plugin
+          if [ ! -f .env ]; then
+            if [ -f .env.example ]; then
+              echo "Creating .env from .env.example..."
+              cp .env.example .env
+            else
+              echo "Creating empty .env file..."
+              touch .env
+            fi
+          fi
+
+          # 3. Ensure gradlew executable bit is set
           if [ -f ./gradlew ]; then
             chmod +x ./gradlew
           fi

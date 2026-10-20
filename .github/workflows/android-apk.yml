@@ -24,33 +24,27 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK platform and build tools
-        run: |
-          sdkmanager "platforms;android-36" "build-tools;36.0.0"
-          yes | sdkmanager --licenses || true
+        with:
+          packages: |
+            platform-tools
+            platforms;android-36
+            build-tools;36.0.0
 
       - name: Prepare build environment
         run: |
-          # Make the Gradle wrapper executable, if the repository has one.
           if [ -f ./gradlew ]; then
             chmod +x ./gradlew
+          else
+            echo "ERROR: Gradle wrapper (gradlew) is missing."
+            exit 1
           fi
 
-          # Create .env from the example only if the project uses one.
           if [ ! -f .env ] && [ -f .env.example ]; then
             cp .env.example .env
           fi
 
       - name: Build Debug APK
-        run: |
-          if [ -f ./gradlew ]; then
-            ./gradlew :app:assembleDebug --stacktrace
-          else
-            echo "ERROR: Gradle wrapper (gradlew) is missing."
-            echo "Commit the project's Gradle wrapper files, then rerun this workflow."
-            exit 1
-          fi
+        run: ./gradlew :app:assembleDebug --stacktrace
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4

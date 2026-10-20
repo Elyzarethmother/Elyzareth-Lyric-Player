@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.audio.AudioPlayerEngine
+import com.example.audio.LocalAudioLibrary
 import com.example.data.ProjectStorage
 import com.example.model.ActiveTab
 import com.example.model.AspectRatioMode
@@ -24,6 +25,7 @@ import kotlinx.coroutines.launch
 class LyricPlayerViewModel(application: Application) : AndroidViewModel(application) {
     val audioEngine = AudioPlayerEngine(application)
     private val storage = ProjectStorage(application)
+    private val localAudioLibrary = LocalAudioLibrary(application)
 
     // Empty by default or restored from saved user session
     private val _playlist = MutableStateFlow<List<Song>>(storage.loadPlaylist())
@@ -292,6 +294,33 @@ class LyricPlayerViewModel(application: Application) : AndroidViewModel(applicat
         _playlist.value = emptyList()
         _currentSong.value = null
         storage.savePlaylist(emptyList())
+    }
+
+    /**
+     * Scans Android MediaStore after MainActivity has obtained runtime audio permission.
+     * Device tracks are merged into the current playlist by stable MediaStore ID.
+     */
+    fun scanDeviceAudio() {
+        viewModelScope.launch {
+            try {
+                val deviceSongs = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    localAudioLibrary.scanDeviceAudio()
+                }
+                if (deviceSongs.isEmpty()) return@launch
+
+                val existingIds = _playlist.value.mapTo(mutableSetOf()) { it.id }
+                val additions = deviceSongs.filterNot { it.id in existingIds }
+                if (additions.isNotEmpty()) {
+                    val merged = _playlist.value + additions
+                    _playlist.value = merged
+                    storage.savePlaylist(merged)
+                }
+            } catch (e: SecurityException) {
+                // Permission may have been revoked between grant and query.
+            } catch (e: Exception) {
+                // Keep the existing imported playlist intact if the scan fails.
+            }
+        }
     }
 
     // [27] Add Songs (load local audio file)

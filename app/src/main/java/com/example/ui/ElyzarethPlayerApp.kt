@@ -47,6 +47,7 @@ import com.example.viewmodel.LyricPlayerViewModel
 @Composable
 fun ElyzarethPlayerApp(
     viewModel: LyricPlayerViewModel,
+    onRequestDeviceLibrary: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -246,7 +247,12 @@ fun ElyzarethPlayerApp(
                                 isAutoNext = isAutoNext,
                                 showAuditLabels = playerSettings.showAuditLabels,
                                 cleanRecordingMode = playerSettings.cleanRecordingMode,
-                                onTabSelected = { viewModel.setActiveTab(it) },
+                                onTabSelected = {
+                                    viewModel.setActiveTab(it)
+                                    if (it == com.example.model.ActiveTab.LIBRARY) {
+                                        onRequestDeviceLibrary()
+                                    }
+                                },
                                 onSongSelected = { viewModel.selectSong(it) },
                                 onAddSongs = {
                                     audioPickerLauncher.launch(arrayOf("audio/*"))
